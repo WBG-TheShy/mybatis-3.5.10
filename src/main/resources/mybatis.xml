@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+    <properties resource="db.properties">
+        <property name="username" value="123"/>
+        <property name="password" value="123"/>
+    </properties>
+
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+    </settings>
+
+    <typeAliases>
+        <typeAlias type="com.jianghaotian.mybatis.mapper.UserMapper" alias="User"/>
+    </typeAliases>
+
+    <plugins>
+        <plugin interceptor="com.jianghaotian.mybatis.plugins.DemoPlugin">
+            <property name="name" value="1234"/>
+        </plugin>
+    </plugins>
+
+
+    <!--配置环境-->
+    <environments default="mysql">
+        <!--配置Mysql的环境-->
+        <environment id="mysql">
+            <!--配置事务的类型-->
+            <transactionManager type="JDBC"/>
+            <!--配置数据源(连接池) mybatis内置了JNDI,POOLED,UNPOOLED三种类型的数据源,其中POOLED是mybatis自带的一个同步的线程安全的数据库连接池,
+            一般在生产中,我们会使用c3p0或者druid连接池-->
+            <dataSource type="POOLED">
+                <!--配置连接数据库的四个基本信息-->
+                <property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/test?useSSL=false"/>
+                <property name="username" value="root"/>
+                <property name="password" value="Jht19960726,.@"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <typeHandlers>
+        <typeHandler handler="com.jianghaotian.mybatis.typeHandlers.DemoTypeHandler"/>
+    </typeHandlers>
+
+    <databaseIdProvider type="">
+
+    </databaseIdProvider>
+
+
+    <mappers>
+        <mapper resource="mapper/UserMapper.xml"/>
+    </mappers>
+
+</configuration>
+
