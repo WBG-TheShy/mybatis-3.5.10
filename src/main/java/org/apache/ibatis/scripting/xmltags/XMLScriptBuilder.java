@@ -67,6 +67,7 @@ public class XMLScriptBuilder extends BaseBuilder {
         //解析sql节点,每一个小环节都会解析成一个SqlNode
         //纯文本解析成StaticTextSqlNode
         //if标签解析成IfSqlNode
+        //等等
         //如果一个SqlNode里有多个节点,则先生成一个MixedSqlNode,而内部的多个节点都放入MixedSqlNode的contents(一个List<SqlNode>)中
         MixedSqlNode rootSqlNode = parseDynamicTags(context);
         SqlSource sqlSource;

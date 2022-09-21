@@ -130,11 +130,15 @@ public class MapperAnnotationBuilder {
 
             //获取mapper接口中所有的方法
             for (Method method : type.getMethods()) {
+                //如果是一个桥接方法或者默认方法
                 if (!canHaveStatement(method)) {
+                    //直接忽略
                     continue;
                 }
+                //如果方法上有@Select或者@SelectProvider的同时,没有@ResultMap注解
                 if (getAnnotationWrapper(method, false, Select.class, SelectProvider.class).isPresent()
                         && method.getAnnotation(ResultMap.class) == null) {
+                    //解析
                     parseResultMap(method);
                 }
                 try {
@@ -311,89 +315,102 @@ public class MapperAnnotationBuilder {
         final Class<?> parameterTypeClass = getParameterType(method);
         final LanguageDriver languageDriver = getLanguageDriver(method);
 
-        getAnnotationWrapper(method, true, statementAnnotationTypes).ifPresent(statementAnnotation -> {
-            final SqlSource sqlSource = buildSqlSource(statementAnnotation.getAnnotation(), parameterTypeClass, languageDriver, method);
-            final SqlCommandType sqlCommandType = statementAnnotation.getSqlCommandType();
-            final Options options = getAnnotationWrapper(method, false, Options.class).map(x -> (Options) x.getAnnotation()).orElse(null);
-            final String mappedStatementId = type.getName() + "." + method.getName();
+        //如果方法上有statementAnnotationTypes定义的注解(下方)
+        //Select.class, Update.class, Insert.class, Delete.class, SelectProvider.class, UpdateProvider.class,
+        //InsertProvider.class, DeleteProvider.class
 
-            final KeyGenerator keyGenerator;
-            String keyProperty = null;
-            String keyColumn = null;
-            if (SqlCommandType.INSERT.equals(sqlCommandType) || SqlCommandType.UPDATE.equals(sqlCommandType)) {
-                // first check for SelectKey annotation - that overrides everything else
-                SelectKey selectKey = getAnnotationWrapper(method, false, SelectKey.class).map(x -> (SelectKey) x.getAnnotation()).orElse(null);
-                if (selectKey != null) {
-                    keyGenerator = handleSelectKeyAnnotation(selectKey, mappedStatementId, getParameterType(method), languageDriver);
-                    keyProperty = selectKey.keyProperty();
-                } else if (options == null) {
-                    keyGenerator = configuration.isUseGeneratedKeys() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
-                } else {
-                    keyGenerator = options.useGeneratedKeys() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
-                    keyProperty = options.keyProperty();
-                    keyColumn = options.keyColumn();
-                }
-            } else {
-                keyGenerator = NoKeyGenerator.INSTANCE;
-            }
+        //就开始解析
+        getAnnotationWrapper(method, true, statementAnnotationTypes).ifPresent(
+                statementAnnotation -> {
+                    //生成SqlSource
+                    final SqlSource sqlSource = buildSqlSource(statementAnnotation.getAnnotation(), parameterTypeClass, languageDriver, method);
+                    //语句类型INSERT, UPDATE, DELETE, SELECT
+                    final SqlCommandType sqlCommandType = statementAnnotation.getSqlCommandType();
+                    final Options options = getAnnotationWrapper(method, false, Options.class).map(x -> (Options) x.getAnnotation()).orElse(null);
 
-            Integer fetchSize = null;
-            Integer timeout = null;
-            StatementType statementType = StatementType.PREPARED;
-            ResultSetType resultSetType = configuration.getDefaultResultSetType();
-            boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
-            boolean flushCache = !isSelect;
-            boolean useCache = isSelect;
-            if (options != null) {
-                if (FlushCachePolicy.TRUE.equals(options.flushCache())) {
-                    flushCache = true;
-                } else if (FlushCachePolicy.FALSE.equals(options.flushCache())) {
-                    flushCache = false;
-                }
-                useCache = options.useCache();
-                fetchSize = options.fetchSize() > -1 || options.fetchSize() == Integer.MIN_VALUE ? options.fetchSize() : null; //issue #348
-                timeout = options.timeout() > -1 ? options.timeout() : null;
-                statementType = options.statementType();
-                if (options.resultSetType() != ResultSetType.DEFAULT) {
-                    resultSetType = options.resultSetType();
-                }
-            }
+                    //mappedStatementId
+                    final String mappedStatementId = type.getName() + "." + method.getName();
 
-            String resultMapId = null;
-            if (isSelect) {
-                ResultMap resultMapAnnotation = method.getAnnotation(ResultMap.class);
-                if (resultMapAnnotation != null) {
-                    resultMapId = String.join(",", resultMapAnnotation.value());
-                } else {
-                    resultMapId = generateResultMapName(method);
-                }
-            }
+                    final KeyGenerator keyGenerator;
+                    String keyProperty = null;
+                    String keyColumn = null;
+                    if (SqlCommandType.INSERT.equals(sqlCommandType) || SqlCommandType.UPDATE.equals(sqlCommandType)) {
+                        // first check for SelectKey annotation - that overrides everything else
+                        SelectKey selectKey = getAnnotationWrapper(method, false, SelectKey.class).map(x -> (SelectKey) x.getAnnotation()).orElse(null);
+                        if (selectKey != null) {
+                            keyGenerator = handleSelectKeyAnnotation(selectKey, mappedStatementId, getParameterType(method), languageDriver);
+                            keyProperty = selectKey.keyProperty();
+                        } else if (options == null) {
+                            keyGenerator = configuration.isUseGeneratedKeys() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
+                        } else {
+                            keyGenerator = options.useGeneratedKeys() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
+                            keyProperty = options.keyProperty();
+                            keyColumn = options.keyColumn();
+                        }
+                    } else {
+                        keyGenerator = NoKeyGenerator.INSTANCE;
+                    }
 
-            assistant.addMappedStatement(
-                    mappedStatementId,
-                    sqlSource,
-                    statementType,
-                    sqlCommandType,
-                    fetchSize,
-                    timeout,
-                    // ParameterMapID
-                    null,
-                    parameterTypeClass,
-                    resultMapId,
-                    getReturnType(method),
-                    resultSetType,
-                    flushCache,
-                    useCache,
-                    // TODO gcode issue #577
-                    false,
-                    keyGenerator,
-                    keyProperty,
-                    keyColumn,
-                    statementAnnotation.getDatabaseId(),
-                    languageDriver,
-                    // ResultSets
-                    options != null ? nullOrEmpty(options.resultSets()) : null);
-        });
+                    Integer fetchSize = null;
+                    Integer timeout = null;
+                    //Statement类型:默认PREPARED
+                    StatementType statementType = StatementType.PREPARED;
+                    //ResultSetType类型,使用mybatis默认的结果集
+                    ResultSetType resultSetType = configuration.getDefaultResultSetType();
+                    boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
+                    boolean flushCache = !isSelect;
+                    boolean useCache = isSelect;
+                    if (options != null) {
+                        if (FlushCachePolicy.TRUE.equals(options.flushCache())) {
+                            flushCache = true;
+                        } else if (FlushCachePolicy.FALSE.equals(options.flushCache())) {
+                            flushCache = false;
+                        }
+                        useCache = options.useCache();
+                        fetchSize = options.fetchSize() > -1 || options.fetchSize() == Integer.MIN_VALUE ? options.fetchSize() : null; //issue #348
+                        timeout = options.timeout() > -1 ? options.timeout() : null;
+                        statementType = options.statementType();
+                        if (options.resultSetType() != ResultSetType.DEFAULT) {
+                            resultSetType = options.resultSetType();
+                        }
+                    }
+
+                    String resultMapId = null;
+                    if (isSelect) {
+                        ResultMap resultMapAnnotation = method.getAnnotation(ResultMap.class);
+                        if (resultMapAnnotation != null) {
+                            resultMapId = String.join(",", resultMapAnnotation.value());
+                        } else {
+                            resultMapId = generateResultMapName(method);
+                        }
+                    }
+
+                    //解析成MappedStatement
+                    assistant.addMappedStatement(
+                            mappedStatementId,
+                            sqlSource,
+                            statementType,
+                            sqlCommandType,
+                            fetchSize,
+                            timeout,
+                            // ParameterMapID
+                            null,
+                            parameterTypeClass,
+                            resultMapId,
+                            getReturnType(method),
+                            resultSetType,
+                            flushCache,
+                            useCache,
+                            // TODO gcode issue #577
+                            false,
+                            keyGenerator,
+                            keyProperty,
+                            keyColumn,
+                            statementAnnotation.getDatabaseId(),
+                            languageDriver,
+                            // ResultSets
+                            options != null ? nullOrEmpty(options.resultSets()) : null);
+                });
     }
 
     private LanguageDriver getLanguageDriver(Method method) {

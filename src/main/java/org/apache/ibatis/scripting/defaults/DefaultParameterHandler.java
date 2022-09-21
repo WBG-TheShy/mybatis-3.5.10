@@ -38,59 +38,67 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  */
 public class DefaultParameterHandler implements ParameterHandler {
 
-  private final TypeHandlerRegistry typeHandlerRegistry;
+    private final TypeHandlerRegistry typeHandlerRegistry;
 
-  private final MappedStatement mappedStatement;
-  private final Object parameterObject;
-  private final BoundSql boundSql;
-  private final Configuration configuration;
+    private final MappedStatement mappedStatement;
+    private final Object parameterObject;
+    private final BoundSql boundSql;
+    private final Configuration configuration;
 
-  public DefaultParameterHandler(MappedStatement mappedStatement, Object parameterObject, BoundSql boundSql) {
-    this.mappedStatement = mappedStatement;
-    this.configuration = mappedStatement.getConfiguration();
-    this.typeHandlerRegistry = mappedStatement.getConfiguration().getTypeHandlerRegistry();
-    this.parameterObject = parameterObject;
-    this.boundSql = boundSql;
-  }
-
-  @Override
-  public Object getParameterObject() {
-    return parameterObject;
-  }
-
-  @Override
-  public void setParameters(PreparedStatement ps) {
-    ErrorContext.instance().activity("setting parameters").object(mappedStatement.getParameterMap().getId());
-    List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
-    if (parameterMappings != null) {
-      for (int i = 0; i < parameterMappings.size(); i++) {
-        ParameterMapping parameterMapping = parameterMappings.get(i);
-        if (parameterMapping.getMode() != ParameterMode.OUT) {
-          Object value;
-          String propertyName = parameterMapping.getProperty();
-          if (boundSql.hasAdditionalParameter(propertyName)) { // issue #448 ask first for additional params
-            value = boundSql.getAdditionalParameter(propertyName);
-          } else if (parameterObject == null) {
-            value = null;
-          } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
-            value = parameterObject;
-          } else {
-            MetaObject metaObject = configuration.newMetaObject(parameterObject);
-            value = metaObject.getValue(propertyName);
-          }
-          TypeHandler typeHandler = parameterMapping.getTypeHandler();
-          JdbcType jdbcType = parameterMapping.getJdbcType();
-          if (value == null && jdbcType == null) {
-            jdbcType = configuration.getJdbcTypeForNull();
-          }
-          try {
-            typeHandler.setParameter(ps, i + 1, value, jdbcType);
-          } catch (TypeException | SQLException e) {
-            throw new TypeException("Could not set parameters for mapping: " + parameterMapping + ". Cause: " + e, e);
-          }
-        }
-      }
+    public DefaultParameterHandler(MappedStatement mappedStatement, Object parameterObject, BoundSql boundSql) {
+        this.mappedStatement = mappedStatement;
+        this.configuration = mappedStatement.getConfiguration();
+        this.typeHandlerRegistry = mappedStatement.getConfiguration().getTypeHandlerRegistry();
+        this.parameterObject = parameterObject;
+        this.boundSql = boundSql;
     }
-  }
+
+    @Override
+    public Object getParameterObject() {
+        return parameterObject;
+    }
+
+    @Override
+    public void setParameters(PreparedStatement ps) {
+        ErrorContext.instance().activity("setting parameters").object(mappedStatement.getParameterMap().getId());
+        //拿到解析BoundSql时生成的ParameterMapping集合
+        List<ParameterMapping> parameterMappings = boundSql.getParameterMappings();
+        if (parameterMappings != null) {
+            //循环每一个ParameterMapping
+            for (int i = 0; i < parameterMappings.size(); i++) {
+                ParameterMapping parameterMapping = parameterMappings.get(i);
+                if (parameterMapping.getMode() != ParameterMode.OUT) {
+                    //真正的入参值
+                    Object value;
+                    //属性名
+                    String propertyName = parameterMapping.getProperty();
+                    if (boundSql.hasAdditionalParameter(propertyName)) { // issue #448 ask first for additional params
+                        value = boundSql.getAdditionalParameter(propertyName);
+                    } else if (parameterObject == null) {
+                        value = null;
+                    } else if (typeHandlerRegistry.hasTypeHandler(parameterObject.getClass())) {
+                        //如果入参的值有对应的类型处理器,则直接赋值
+                        value = parameterObject;
+                    } else {
+                        //一般情况下传入的参数是一个对象,需要根据属性名通过反射拿到对象中的属性值
+                        MetaObject metaObject = configuration.newMetaObject(parameterObject);
+                        value = metaObject.getValue(propertyName);
+                    }
+                    //类型处理器
+                    TypeHandler typeHandler = parameterMapping.getTypeHandler();
+                    JdbcType jdbcType = parameterMapping.getJdbcType();
+                    if (value == null && jdbcType == null) {
+                        jdbcType = configuration.getJdbcTypeForNull();
+                    }
+                    try {
+                        //利用类型处理器设置PreparedStatement的值
+                        typeHandler.setParameter(ps, i + 1, value, jdbcType);
+                    } catch (TypeException | SQLException e) {
+                        throw new TypeException("Could not set parameters for mapping: " + parameterMapping + ". Cause: " + e, e);
+                    }
+                }
+            }
+        }
+    }
 
 }

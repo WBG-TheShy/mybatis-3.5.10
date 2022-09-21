@@ -23,6 +23,8 @@ package org.apache.ibatis.mapping;
  */
 public interface SqlSource {
 
-  BoundSql getBoundSql(Object parameterObject);
+    //解析阶段:动态的SQL使用的是DynamicSqlSource,静态的SQL使用的是RawSqlSource,通过Java注解生命的sql使用的是ProviderSqlSource
+    //执行阶段:StaticSqlSource
+    BoundSql getBoundSql(Object parameterObject);
 
 }

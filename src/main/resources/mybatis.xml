@@ -2,24 +2,30 @@
 <!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
 <configuration>
 
-    <properties resource="db.properties">
-        <property name="username" value="123"/>
-        <property name="password" value="123"/>
-    </properties>
+<!--  mybatis规定必须按照顺序进行书写 (properties?,settings?,typeAliases?,typeHandlers?,objectFactory?,objectWrapperFactory?,reflectorFactory?,plugins?,environments?,databaseIdProvider?,mappers?)  -->
+
+<!--    <properties resource="db.properties">-->
+<!--        <property name="username" value="123"/>-->
+<!--        <property name="password" value="123"/>-->
+<!--    </properties>-->
 
     <settings>
-        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <setting name="logImpl" value="STDOUT_LOGGING"/>
     </settings>
 
-    <typeAliases>
-        <typeAlias type="com.jianghaotian.mybatis.mapper.UserMapper" alias="User"/>
-    </typeAliases>
+<!--    <typeAliases>-->
+<!--        <typeAlias type="com.jianghaotian.mybatis.mapper.UserMapper" alias="User"/>-->
+<!--    </typeAliases>-->
 
-    <plugins>
-        <plugin interceptor="com.jianghaotian.mybatis.plugins.DemoPlugin">
-            <property name="name" value="1234"/>
-        </plugin>
-    </plugins>
+<!--    <typeHandlers>-->
+<!--        <typeHandler handler="com.jianghaotian.mybatis.typeHandlers.DemoTypeHandler"/>-->
+<!--    </typeHandlers>-->
+
+<!--    <plugins>-->
+<!--        <plugin interceptor="com.jianghaotian.mybatis.plugins.DemoPlugin">-->
+<!--            <property name="name" value="1234"/>-->
+<!--        </plugin>-->
+<!--    </plugins>-->
 
 
     <!--配置环境-->
@@ -40,13 +46,11 @@
         </environment>
     </environments>
 
-    <typeHandlers>
-        <typeHandler handler="com.jianghaotian.mybatis.typeHandlers.DemoTypeHandler"/>
-    </typeHandlers>
 
-    <databaseIdProvider type="">
 
-    </databaseIdProvider>
+<!--    <databaseIdProvider type="">-->
+
+<!--    </databaseIdProvider>-->
 
 
     <mappers>

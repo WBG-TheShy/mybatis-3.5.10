@@ -96,7 +96,9 @@ public class TransactionalCache implements Cache {
     if (clearOnCommit) {
       delegate.clear();
     }
+    //放入真正到二级缓存map中
     flushPendingEntries();
+    //清空自己
     reset();
   }
 

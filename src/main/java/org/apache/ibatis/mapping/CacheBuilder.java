@@ -92,7 +92,7 @@ public class CacheBuilder {
     public Cache build() {
         //如果未设置默认缓存和淘汰机制,则设置默认缓存和淘汰机制
         setDefaultImplementations();
-        //获取当前的缓存实现
+        //获取当前的缓存实例
         Cache cache = newBaseCacheInstance(implementation, id);
         setCacheProperties(cache);
         // issue #352, do not apply decorators to custom caches
@@ -142,7 +142,7 @@ public class CacheBuilder {
                 //所以一旦<cache>标签的readOnly属性设置为true,则pojo类都需要实现Serializable接口
                 cache = new SerializedCache(cache);
             }
-            //包装一层LoggingCache:只要获取缓存并且命中了,就打印命中率
+            //包装一层LoggingCache:只要获取缓存并且命中了,就打印一条命中率的日志信息
             cache = new LoggingCache(cache);
             //包装一层SynchronizedCache:为了保证线程安全,这个类所有的方法都用synchronized关键字修饰
             cache = new SynchronizedCache(cache);

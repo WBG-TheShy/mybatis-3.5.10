@@ -97,7 +97,7 @@ public class XMLMapperBuilder extends BaseBuilder {
             configurationElement(parser.evalNode("/mapper"));
             //添加到loadedResources集合中去,表示已解析过
             configuration.addLoadedResource(resource);
-            //将mapper标签的namespace属性(命名空间)的值,作为mapper接口,添加到configuration中去
+            //将mapper标签的namespace属性(命名空间)的值,作为mapper接口,添加到configuration中去(如果还没解析的话才添加,如果已经解析了就啥也不干)
             bindMapperForNamespace();
         }
 
@@ -137,12 +137,14 @@ public class XMLMapperBuilder extends BaseBuilder {
             //4.缓存不会定时进行刷新（也就是说，没有刷新间隔）。
             //5.缓存会保存列表或对象（无论查询方法返回哪种）的 1024 个引用。
             //6.缓存会被视为读/写缓存，这意味着获取到的对象并不是共享的，可以安全地被调用者修改，而不干扰其他调用者或线程所做的潜在修改。
+            //最终会set到configuration的caches中
             cacheElement(context.evalNode("cache"));
 
             //解析<parameterMap>节点(该节点在mybatis3.5版本已经不推荐使用了)
             parameterMapElement(context.evalNodes("/mapper/parameterMap"));
 
             //解析<resultMap>节点:结果映射
+            //最终解析到configuration的resultMap中
             resultMapElements(context.evalNodes("/mapper/resultMap"));
 
             //解析<sql>节点:用来定义可重用的 SQL 代码片段，以便在其它语句中使用。
@@ -150,6 +152,7 @@ public class XMLMapperBuilder extends BaseBuilder {
             sqlElement(context.evalNodes("/mapper/sql"));
 
             //解析<select|insert|update|delete>节点
+            //最终将每一个节点解析成MappedStatement,set到configuration中的mappedStatement中
             buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
         } catch (Exception e) {
             throw new BuilderException("Error parsing Mapper XML. The XML location is '" + resource + "'. Cause: " + e, e);
@@ -245,8 +248,8 @@ public class XMLMapperBuilder extends BaseBuilder {
 
             //获取<cache>标签的eviction属性:缓存数量满后的淘汰机制,如果未设置,则默认使用LRU(具体实现为LruCache)
             //mybatis提供了4种淘汰机制
-            //LRU – 最近最少使用：移除最长时间不被使用的对象。(LruCache)
-            //FIFO – 先进先出：按对象进入缓存的顺序来移除它们。(FifoCache)
+            //LRU – 最近最少使用：移除最长时间不被使用的对象。(LruCache)-使用LinkedHashMap实现
+            //FIFO – 先进先出：按对象进入缓存的顺序来移除它们。(FifoCache)-使用LinkedList实现
             //SOFT – 软引用：基于垃圾回收器状态和软引用规则移除对象。(SoftCache)
             //WEAK – 弱引用：更积极地基于垃圾收集器状态和弱引用规则移除对象。(WeakCache)
             String eviction = context.getStringAttribute("eviction", "LRU");
@@ -267,7 +270,7 @@ public class XMLMapperBuilder extends BaseBuilder {
             //获取<cache>标签的blocking属性:true或者false,如果为true则会使用BlockingCache
             boolean blocking = context.getBooleanAttribute("blocking", false);
             Properties props = context.getChildrenAsProperties();
-            //将参数封装成一个Cache对象(包装成一个大Cache),并放入到configuration对象中
+            //将参数封装成一个Cache对象(包装成一个大Cache,将最底层的Cache一层一层的用其他Cache包装,类似穿衣服),并放入到configuration对象中
             builderAssistant.useNewCache(typeClass, evictionClass, flushInterval, size, readWrite, blocking, props);
         }
     }

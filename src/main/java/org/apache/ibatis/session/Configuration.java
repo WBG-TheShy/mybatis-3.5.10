@@ -684,7 +684,9 @@ public class Configuration {
     }
 
     public StatementHandler newStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
+        //实例化RoutingStatementHandler的同时会在内部实例化PreparedStatementHandler
         StatementHandler statementHandler = new RoutingStatementHandler(executor, mappedStatement, parameterObject, rowBounds, resultHandler, boundSql);
+        //调用插件的回调
         statementHandler = (StatementHandler) interceptorChain.pluginAll(statementHandler);
         return statementHandler;
     }
@@ -694,18 +696,26 @@ public class Configuration {
     }
 
     public Executor newExecutor(Transaction transaction, ExecutorType executorType) {
+        //如果没有在全局配置文件中配置defaultExecutorType,则默认使用ExecutorType.SIMPLE
+        //如果配置了则使用配置的Executor
         executorType = executorType == null ? defaultExecutorType : executorType;
         Executor executor;
         if (ExecutorType.BATCH == executorType) {
+            //BatchExecutor:批处理执行器
             executor = new BatchExecutor(this, transaction);
         } else if (ExecutorType.REUSE == executorType) {
+            //ReuseExecutor:可重用执行器
             executor = new ReuseExecutor(this, transaction);
         } else {
+            //SimpleExecutor:普通执行器
             executor = new SimpleExecutor(this, transaction);
         }
+        //如果开启二级缓存
         if (cacheEnabled) {
+            //包装一层CachingExecutor
             executor = new CachingExecutor(executor);
         }
+        //获取所有配置的插件,并依次执行pluginAll()方法,传入当前的executor,返回的是一个代理对象
         executor = (Executor) interceptorChain.pluginAll(executor);
         return executor;
     }

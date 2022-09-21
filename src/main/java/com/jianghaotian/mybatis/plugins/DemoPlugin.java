@@ -24,7 +24,16 @@ import java.util.Properties;
 public class DemoPlugin implements Interceptor {
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-        return null;
+
+        Object[] args = invocation.getArgs();
+        MappedStatement mappedStatement = (MappedStatement)args[0];
+        //自己的逻辑
+        //....
+
+
+
+        //执行下一个拦截器,直到所有拦截器都执行完为止
+        return invocation.proceed();
     }
 
     @Override

@@ -46,6 +46,7 @@ public interface LanguageDriver {
    * @param parameterType input parameter type got from a mapper method or specified in the parameterType xml attribute. Can be null.
    * @return the sql source
    */
+  //一般是XMLLanguageDriver
   SqlSource createSqlSource(Configuration configuration, XNode script, Class<?> parameterType);
 
   /**

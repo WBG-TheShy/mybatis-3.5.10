@@ -116,8 +116,8 @@ public class XMLStatementBuilder extends BaseBuilder {
         }
 
         //解析SQL生成MixedSqlNode,并将MixedSqlNode和configuration对象封装成为一个SqlSource
-        //如果是静态的sql语句,也就是解析阶段就已经知道sql语句的样子,会返回RawSqlSource
-        //如果是动态的sql语句,也就是必须在执行sql的阶段才知道sql语句的样子,会返回DynamicSqlSource
+        //如果是静态的sql语句:既没有<where>,<if>等等这样的元素节点,也没有${},会返回RawSqlSource
+        //其余的都是动态sql语句,会返回DynamicSqlSource
         //这里并不会真正解析成完整的sql,因为此时还处于解析阶段,真正的sql会在执行阶段生成
         SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
         //statementType:可选 STATEMENT，PREPARED 或 CALLABLE。这会让 MyBatis 分别使用 Statement，PreparedStatement 或 CallableStatement，默认值：PREPARED。

@@ -72,7 +72,7 @@ public class MapperRegistry {
                 // otherwise the binding may automatically be attempted by the
                 // mapper parser. If the type is already known, it won't try.
                 //创建注解的解析器
-                //解析mapper类的@Select等注解
+                //解析mapper类的@Select等注解用的
                 MapperAnnotationBuilder parser = new MapperAnnotationBuilder(config, type);
                 //解析
                 parser.parse();

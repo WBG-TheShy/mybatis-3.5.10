@@ -25,24 +25,32 @@ import org.apache.ibatis.session.Configuration;
  */
 public class DynamicSqlSource implements SqlSource {
 
-  private final Configuration configuration;
-  private final SqlNode rootSqlNode;
+    private final Configuration configuration;
+    private final SqlNode rootSqlNode;
 
-  public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {
-    this.configuration = configuration;
-    this.rootSqlNode = rootSqlNode;
-  }
+    public DynamicSqlSource(Configuration configuration, SqlNode rootSqlNode) {
+        this.configuration = configuration;
+        this.rootSqlNode = rootSqlNode;
+    }
 
-  @Override
-  public BoundSql getBoundSql(Object parameterObject) {
-    DynamicContext context = new DynamicContext(configuration, parameterObject);
-    rootSqlNode.apply(context);
-    SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
-    Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
-    SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
-    BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
-    context.getBindings().forEach(boundSql::setAdditionalParameter);
-    return boundSql;
-  }
+    @Override
+    public BoundSql getBoundSql(Object parameterObject) {
+        DynamicContext context = new DynamicContext(configuration, parameterObject);
+        //1.责任链 处理一个个SqlNode 编译出一个完整SQL
+        //rootSqlNode即最外层的sqlNode,其内部包含一个List<SqlNode>,循环调用每一个sqlNode的apply()方法
+        rootSqlNode.apply(context);
+
+        SqlSourceBuilder sqlSourceParser = new SqlSourceBuilder(configuration);
+
+        //2.接下来处理sql中的#{},替换成?,并把#{}的内容封装成一个parameterMapping,然后放到SqlSource里(在里面可以看到mybatis用了什么typeHandler)
+        Class<?> parameterType = parameterObject == null ? Object.class : parameterObject.getClass();
+        //这个SqlSource具体类型是一个StaticSqlSource
+        SqlSource sqlSource = sqlSourceParser.parse(context.getSql(), parameterType, context.getBindings());
+
+        //将sql,parameterMapping,参数值封装成一个BoundSql
+        BoundSql boundSql = sqlSource.getBoundSql(parameterObject);
+        context.getBindings().forEach(boundSql::setAdditionalParameter);
+        return boundSql;
+    }
 
 }

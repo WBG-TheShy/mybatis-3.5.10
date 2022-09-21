@@ -121,6 +121,7 @@ public class XMLConfigBuilder extends BaseBuilder {
         try {
             // issue #117 read properties first
             //解析<properties>标签:属性文件
+            //最终set到configuration的variables属性中
             propertiesElement(root.evalNode("properties"));
 
             //解析<settings>标签:全局配置
@@ -136,12 +137,15 @@ public class XMLConfigBuilder extends BaseBuilder {
             //JDK_LOGGING
             //STDOUT_LOGGING
             //NO_LOGGING
+            //最终set到configuration的logImpl属性中
             loadCustomLogImpl(settings);
 
             //解析<typeAliases>标签:别名
+            //最终set到configuration的typeAliases里
             typeAliasesElement(root.evalNode("typeAliases"));
 
             //解析<plugins>标签:插件
+            //最终set到configuration的interceptorChain里
             pluginElement(root.evalNode("plugins"));
 
             //解析<objectFactory>标签:用于反射实例化对象的工厂(一般不会去配置)
@@ -154,18 +158,24 @@ public class XMLConfigBuilder extends BaseBuilder {
             reflectorFactoryElement(root.evalNode("reflectorFactory"));
 
             //设置全局配置的默认值
+            //分别调用configuration各个属性的setter方法进行设置
             settingsElement(settings);
+
             // read it after objectFactory and objectWrapperFactory issue #631
             //解析<environments>标签:数据库环境
+            //最终set到configuration的environment中
             environmentsElement(root.evalNode("environments"));
 
             //解析<databaseIdProvider>标签:数据库厂商标识
+            //最终set到configuration的databaseId中
             databaseIdProviderElement(root.evalNode("databaseIdProvider"));
 
             //解析<typeHandlers>标签:类型处理器
+            //最终set到configuration的typeHandlerRegistry中
             typeHandlerElement(root.evalNode("typeHandlers"));
 
             //解析<mappers>标签:mapper文件
+            //最终set到configuration的mappedStatement中
             mapperElement(root.evalNode("mappers"));
         } catch (Exception e) {
             throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
@@ -184,7 +194,7 @@ public class XMLConfigBuilder extends BaseBuilder {
         }
 
         //mybatis所有的全局属性都在Configuration类中定义
-        //protected boolean safeRowBoundsEnabled;
+        //    protected boolean safeRowBoundsEnabled;
         //    protected boolean safeResultHandlerEnabled = true;
         //    protected boolean mapUnderscoreToCamelCase;
         //    protected boolean aggressiveLazyLoading;
@@ -269,7 +279,7 @@ public class XMLConfigBuilder extends BaseBuilder {
                 if ("package".equals(child.getName())) {
                     //获得name属性
                     String typeAliasPackage = child.getStringAttribute("name");
-                    //扫描name属性对应的包下所有的java对象,在没有注解的情况下，会使用 Bean 的首字母小写的非限定类名来作为它的别名
+                    //扫描name属性对应的包下所有的java对象,在没有注解的情况下，会使用类的首字母小写的非限定类名来作为它的别名
                     //若有注解，则别名为其注解值
                     //例如:
                     //@Alias("author")
@@ -317,7 +327,7 @@ public class XMLConfigBuilder extends BaseBuilder {
         //    </plugin>
         //</plugins>
         //程序员定义的插件必须实现Interceptor接口(mybatis包下的)
-        //上面的插件将会拦截在 Executor 实例中所有的 “update” 方法调用， 这里的 Executor 是负责执行底层映射语句的内部对象。
+        //例如上面的插件将会拦截在 Executor 实例中所有的 “update” 方法调用， 这里的 Executor 是负责执行底层映射语句的内部对象。
         if (parent != null) {
             //循环所有的<plugin>标签
             for (XNode child : parent.getChildren()) {
@@ -373,9 +383,9 @@ public class XMLConfigBuilder extends BaseBuilder {
         if (context != null) {
             //先把第3种方式的<property>标签取出来,根据name和value的值,设置到Properties对象中去
             Properties defaults = context.getChildrenAsProperties();
-            //是否有resource属性
+            //<properties>的resource属性
             String resource = context.getStringAttribute("resource");
-            //是否有url属性
+            //<properties>的url属性
             String url = context.getStringAttribute("url");
             //resource属性和url属性不可同时存在
             if (resource != null && url != null) {
@@ -388,12 +398,15 @@ public class XMLConfigBuilder extends BaseBuilder {
                 //将url属性的值对应的文件读出来,并放入Properties对象中
                 defaults.putAll(Resources.getUrlAsProperties(url));
             }
-            //如果有手动传入的Properties(例如:build(Reader reader, Properties properties))
+            //如果有手动传入的Properties(例如:SqlSessionFactoryBuilder().build(Reader reader, Properties properties))
             Properties vars = configuration.getVariables();
             if (vars != null) {
                 //则放入Properties对象中
                 defaults.putAll(vars);
             }
+
+            //由此可以看出Properties的优先级为:手动 >>>>>>> resource或url >>>>>>>>> <property>标签
+
             parser.setVariables(defaults);
             //放入到configuration对象中
             configuration.setVariables(defaults);
@@ -479,9 +492,9 @@ public class XMLConfigBuilder extends BaseBuilder {
         //  </environment>
         //</environments>
         if (context != null) {
-            //如果没有手动指定环境名称
+            //如果没有手动指定默认环境
             if (environment == null) {
-                //则获取default属性的值作为默认环境
+                //则获取<environments>标签的default属性的值作为默认环境
                 environment = context.getStringAttribute("default");
             }
             //循环每一个<environment>
@@ -490,11 +503,14 @@ public class XMLConfigBuilder extends BaseBuilder {
                 String id = child.getStringAttribute("id");
                 //如果id的值和默认环境的值相同,才会加载
                 if (isSpecifiedEnvironment(id)) {
-                    //<transactionManager>:设置事务管理器
+                    //<transactionManager>:事务管理器(必须实现TransactionFactory接口,通过反射,实例化一个TransactionFactory对象)
                     TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
-                    //<dataSource>:设置数据源
+
+                    //<dataSource>:数据源(必须实现DataSourceFactory接口,通过反射,实例化一个DataSourceFactory对象)
+                    //解析<dataSource>的type属性获得DataSourceFactory
                     DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
                     DataSource dataSource = dsFactory.getDataSource();
+
                     //将事务管理器和数据源封装成为一个Environment.Builder
                     Environment.Builder environmentBuilder = new Environment.Builder(id)
                             .transactionFactory(txFactory)
@@ -572,9 +588,11 @@ public class XMLConfigBuilder extends BaseBuilder {
         if (context != null) {
             //type属性:数据源类型
             String type = context.getStringAttribute("type");
+            //获取<properties>标签
             Properties props = context.getChildrenAsProperties();
             //反射获取实例
             DataSourceFactory factory = (DataSourceFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+            //设置到DataSourceFactory中去
             factory.setProperties(props);
             return factory;
         }
@@ -604,6 +622,8 @@ public class XMLConfigBuilder extends BaseBuilder {
                     String jdbcTypeName = child.getStringAttribute("jdbcType");
                     //获取handler属性,例如com.xxx.DemoTypeHandler(这个类必须实现TypeHandler接口)
                     String handlerTypeName = child.getStringAttribute("handler");
+
+                    //将字符串解析成对应的类
                     Class<?> javaTypeClass = resolveClass(javaTypeName);
                     JdbcType jdbcType = resolveJdbcType(jdbcTypeName);
                     Class<?> typeHandlerClass = resolveClass(handlerTypeName);

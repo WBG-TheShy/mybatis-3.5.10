@@ -85,7 +85,7 @@ public class SqlSessionFactoryBuilder {
             XMLConfigBuilder parser = new XMLConfigBuilder(inputStream, environment, properties);
 
             //parser.parse()方法就是开始解析xml文件,并将解析后的内容放入Configuration对象中并返回
-            //再通过build()方法,传入解析后的生成的Configuration对象,
+            //再通过build()方法,传入解析后的生成的Configuration对象,生成一个SqlSessionFactory并返回(具体是DefaultSqlSessionFactory)
             return build(parser.parse());
         } catch (Exception e) {
             throw ExceptionFactory.wrapException("Error building SqlSession.", e);
